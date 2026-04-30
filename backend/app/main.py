@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.database import Base, engine
+from app.models import user, transaction, budget  # noqa: F401 - 모델 등록용
 from app.routers import auth, transactions, budgets, users
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Finance Ledger API")
 
