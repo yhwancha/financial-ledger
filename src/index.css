@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Pretendard', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --color-mint-50: #effdf6;
+  --color-mint-100: #d8fbe8;
+  --color-mint-200: #b3f5d2;
+  --color-mint-300: #7eeab3;
+  --color-mint-400: #46d68f;
+  --color-mint-500: #1fbd72;
+  --color-mint-600: #11975b;
+  --color-mint-700: #0f7a4a;
+  --color-mint-800: #10613d;
+  --color-mint-900: #0e5034;
+
+  --color-ink-50: #f7f9f8;
+  --color-ink-100: #eef2f0;
+  --color-ink-200: #dde2df;
+  --color-ink-300: #b6bdb9;
+  --color-ink-400: #8a958f;
+  --color-ink-500: #5a6862;
+  --color-ink-600: #455950;
+  --color-ink-700: #2d3a34;
+  --color-ink-800: #1a2520;
+  --color-ink-900: #0b1411;
+
+  --shadow-soft: 0 1px 2px rgba(13, 30, 22, 0.04), 0 6px 20px -8px rgba(13, 30, 22, 0.08);
+}
+
+html, body, #root {
+  height: 100%;
+  background: #f7f9f8;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tnum { font-variant-numeric: tabular-nums; }
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type='number'] { -moz-appearance: textfield; }
+input[type='date'] { font-family: inherit; }
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-slidedown { animation: slideDown 180ms ease-out; }
+
+@keyframes pop {
+  0%   { transform: scale(0.96); opacity: 0; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+.anim-pop { animation: pop 160ms ease-out; }
