@@ -1,5 +1,6 @@
 from datetime import date
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -18,11 +19,11 @@ class TransactionCreate(BaseModel):
 
 
 class TransactionUpdate(BaseModel):
-    date: date | None = None
-    type: TxType | None = None
-    category: str | None = None
-    amount: int | None = Field(default=None, gt=0)
-    memo: str | None = None
+    date: Optional[date] = None
+    type: Optional[TxType] = None
+    category: Optional[str] = None
+    amount: Optional[int] = Field(default=None, gt=0)
+    memo: Optional[str] = None
 
 
 class TransactionResponse(BaseModel):
