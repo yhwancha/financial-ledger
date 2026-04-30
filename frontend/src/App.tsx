@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import AuthScreen from './AuthScreen';
 import {
   Wallet, Plus, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   ArrowDownLeft, ArrowUpRight, PiggyBank, AlertTriangle, Target, Pencil,
@@ -727,10 +728,11 @@ function BottomTabs({ value, onChange }: { value: TabKey; onChange: (t: TabKey) 
 
 // ─── More / Settings page ─────────────────────────────────────────────────────
 
-function MorePage({ budget, onSaveBudget, theme, onSetTheme, txCount, monthLabel }: {
+function MorePage({ budget, onSaveBudget, theme, onSetTheme, txCount, monthLabel, email, onLogout }: {
   budget: number; onSaveBudget: (v: number) => void;
   theme: string; onSetTheme: (k: string) => void;
   txCount: number; monthLabel: string;
+  email: string; onLogout: () => void;
 }) {
   const [draftBudget, setDraftBudget] = useState(budget);
   useEffect(() => { setDraftBudget(budget); }, [budget]);
@@ -795,6 +797,20 @@ function MorePage({ budget, onSaveBudget, theme, onSetTheme, txCount, monthLabel
         </div>
       </section>
 
+      {/* 계정 */}
+      <section className="bg-white rounded-2xl border border-ink-100 shadow-soft p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[11px] text-ink-400 font-medium">로그인 계정</div>
+            <div className="text-[13px] font-semibold text-ink-900 mt-0.5">{email}</div>
+          </div>
+          <button onClick={onLogout}
+            className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 text-[12px] font-semibold hover:bg-rose-100 transition">
+            로그아웃
+          </button>
+        </div>
+      </section>
+
       <p className="text-center text-[11px] text-ink-400 pt-2 pb-4">Ledger · 개인 가계부</p>
     </div>
   );
@@ -803,6 +819,29 @@ function MorePage({ budget, onSaveBudget, theme, onSetTheme, txCount, monthLabel
 // ─── Main app ─────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
+  const [email, setEmail] = useState<string>(() => localStorage.getItem('email') ?? '');
+
+  const handleLogin = (newToken: string, newEmail: string) => {
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('email', newEmail);
+    setToken(newToken);
+    setEmail(newEmail);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('email');
+    setToken(null);
+    setEmail('');
+  };
+
+  if (!token) return <AuthScreen onLogin={handleLogin} />;
+
+  return <LedgerApp email={email} onLogout={handleLogout} />;
+}
+
+function LedgerApp({ email, onLogout }: { email: string; onLogout: () => void }) {
   const [transactions, setTransactions] = useState<Transaction[]>(buildSampleData);
   const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [budgets, setBudgets] = useState<Record<string, number>>({});
@@ -946,7 +985,8 @@ export default function App() {
           <div className="anim-slidedown">
             <MorePage budget={budget} onSaveBudget={v => setBudgets(p => ({ ...p, [monthKey]: v }))}
               theme={theme} onSetTheme={k => { setTheme(k); applyPalette(k); }}
-              txCount={transactions.length} monthLabel={monthLabel} />
+              txCount={transactions.length} monthLabel={monthLabel}
+              email={email} onLogout={onLogout} />
           </div>
         )}
       </div>
