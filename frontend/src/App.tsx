@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import AuthScreen from './AuthScreen';
-import { api, Transaction } from './api';
+import { api } from './api';
+import type { Transaction } from './api';
 import {
   Wallet, Plus, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   ArrowDownLeft, ArrowUpRight, PiggyBank, AlertTriangle, Target, Pencil,
