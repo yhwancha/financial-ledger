@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import AuthScreen from './AuthScreen';
+import { api, Transaction } from './api';
 import {
   Wallet, Plus, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   ArrowDownLeft, ArrowUpRight, PiggyBank, AlertTriangle, Target, Pencil,
@@ -11,15 +12,6 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Transaction {
-  id: number;
-  date: string;
-  type: 'income' | 'expense';
-  category: string;
-  amount: number;
-  memo: string;
-}
 
 type TabKey = 'home' | 'calendar' | 'list' | 'more';
 
@@ -106,43 +98,6 @@ function applyPalette(key: string) {
   Object.entries(p.scale).forEach(([shade, channels]) => {
     root.style.setProperty(`--color-mint-${shade}`, `rgb(${channels})`);
   });
-}
-
-// ─── Sample data ──────────────────────────────────────────────────────────────
-
-function buildSampleData(): Transaction[] {
-  const now = new Date();
-  const y = now.getFullYear(), m = now.getMonth();
-  const ym = (offset: number) => { const d = new Date(y, m + offset, 1); return { y: d.getFullYear(), m: d.getMonth() }; };
-  const iso = (yy: number, mm: number, dd: number) =>
-    `${yy}-${String(mm+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
-  const cur = ym(0), prev = ym(-1);
-  let id = 1;
-  const tx = (date: string, type: 'income'|'expense', category: string, amount: number, memo: string): Transaction =>
-    ({ id: id++, date, type, category, amount, memo });
-  return [
-    tx(iso(cur.y,cur.m,25),'expense','식비',  12800,'점심 백반'),
-    tx(iso(cur.y,cur.m,25),'expense','교통',   1500,'지하철'),
-    tx(iso(cur.y,cur.m,24),'expense','쇼핑',  45900,'운동화 끈'),
-    tx(iso(cur.y,cur.m,23),'expense','식비',   8900,'편의점 도시락'),
-    tx(iso(cur.y,cur.m,22),'expense','여가',  18000,'영화 1인'),
-    tx(iso(cur.y,cur.m,21),'expense','식비',  34500,'친구랑 저녁'),
-    tx(iso(cur.y,cur.m,20),'expense','통신',  55000,'휴대폰 요금'),
-    tx(iso(cur.y,cur.m,18),'expense','주거', 680000,'월세'),
-    tx(iso(cur.y,cur.m,17),'expense','의료',  15000,'감기약'),
-    tx(iso(cur.y,cur.m,15),'expense','식비',  23000,'장보기'),
-    tx(iso(cur.y,cur.m,12),'expense','교육',  89000,'온라인 강의'),
-    tx(iso(cur.y,cur.m,10),'expense','교통',  60000,'교통카드 충전'),
-    tx(iso(cur.y,cur.m, 8),'expense','식비',   7200,'아침 김밥'),
-    tx(iso(cur.y,cur.m, 5),'expense','쇼핑', 120000,'셔츠 2벌'),
-    tx(iso(cur.y,cur.m, 3),'expense','식비',  14500,'점심 파스타'),
-    tx(iso(cur.y,cur.m,25),'income', '부수입',80000,'중고 판매'),
-    tx(iso(cur.y,cur.m,10),'income', '용돈',100000,'부모님'),
-    tx(iso(cur.y,cur.m, 1),'income', '급여',2800000,'4월 월급'),
-    tx(iso(prev.y,prev.m,28),'expense','식비',  45000,'저녁 외식'),
-    tx(iso(prev.y,prev.m,18),'expense','주거',680000,'월세'),
-    tx(iso(prev.y,prev.m, 1),'income', '급여',2800000,'지난달 월급'),
-  ];
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
@@ -842,7 +797,8 @@ export default function App() {
 }
 
 function LedgerApp({ email, onLogout }: { email: string; onLogout: () => void }) {
-  const [transactions, setTransactions] = useState<Transaction[]>(buildSampleData);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [budgets, setBudgets] = useState<Record<string, number>>({});
   const [formOpen, setFormOpen] = useState(false);
@@ -855,6 +811,20 @@ function LedgerApp({ email, onLogout }: { email: string; onLogout: () => void })
 
   const monthKey = ymKey(cursor);
   const monthLabel = `${cursor.getFullYear()}년 ${cursor.getMonth() + 1}월`;
+
+  useEffect(() => {
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth() + 1;
+    setLoading(true);
+    setTransactions([]);
+    Promise.all([
+      api.getTransactions(year, month),
+      api.getBudget(year, month),
+    ]).then(([txs, budget]) => {
+      setTransactions(txs);
+      setBudgets(prev => ({ ...prev, [monthKey]: budget.amount }));
+    }).catch(console.error).finally(() => setLoading(false));
+  }, [monthKey]);
 
   const monthTx = useMemo(() =>
     transactions.filter(t => t.date.startsWith(monthKey))
@@ -903,19 +873,39 @@ function LedgerApp({ email, onLogout }: { email: string; onLogout: () => void })
 
   const moveMonth = (delta: number) => setCursor(d => new Date(d.getFullYear(), d.getMonth() + delta, 1));
 
-  const upsertTx = (tx: Omit<Transaction, 'id'> & { id?: number }) => {
-    if (tx.id) {
-      setTransactions(prev => prev.map(t => t.id === tx.id ? { ...tx, id: tx.id! } : t));
-    } else {
-      const newId = Math.max(0, ...transactions.map(t => t.id)) + 1;
-      setTransactions(prev => [{ ...tx, id: newId } as Transaction, ...prev]);
+  const upsertTx = async (tx: Omit<Transaction, 'id'> & { id?: number }) => {
+    try {
+      if (tx.id) {
+        const { id, ...data } = tx as Transaction;
+        await api.updateTransaction(id, data);
+      } else {
+        await api.createTransaction(tx);
+      }
+      const txs = await api.getTransactions(cursor.getFullYear(), cursor.getMonth() + 1);
+      setTransactions(txs);
+    } catch (e) {
+      console.error(e);
     }
     setEditing(null); setFormOpen(false);
   };
 
-  const removeTx = (id: number) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
+  const removeTx = async (id: number) => {
+    try {
+      await api.deleteTransaction(id);
+      setTransactions(prev => prev.filter(t => t.id !== id));
+    } catch (e) {
+      console.error(e);
+    }
     if (editing?.id === id) setEditing(null);
+  };
+
+  const saveBudget = async (v: number) => {
+    setBudgets(p => ({ ...p, [monthKey]: v }));
+    try {
+      await api.setBudget(cursor.getFullYear(), cursor.getMonth() + 1, v);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const startEdit = (tx: Transaction) => {
@@ -935,12 +925,19 @@ function LedgerApp({ email, onLogout }: { email: string; onLogout: () => void })
         <Header monthLabel={monthLabel} onPrev={() => moveMonth(-1)} onNext={() => moveMonth(+1)}
           onToday={() => setCursor(new Date(new Date().getFullYear(), new Date().getMonth(), 1))} tab={tab} />
 
+        {/* Loading indicator */}
+        {loading && (
+          <div className="fixed top-0 inset-x-0 z-50 h-0.5 bg-mint-200 overflow-hidden">
+            <div className="h-full bg-mint-500 animate-pulse w-full" />
+          </div>
+        )}
+
         {/* HOME */}
         {tab === 'home' && (
           <div className="space-y-3 anim-slidedown">
             <SummaryCards totals={totals} />
             <BudgetCard budget={budget} spent={totals.expense} pct={budgetPct} over={overBudget}
-              onSave={v => setBudgets(p => ({ ...p, [monthKey]: v }))} />
+              onSave={saveBudget} />
             <DonutCard data={expenseByCat} total={totals.expense} />
             <RecentList groups={groupedByDate.slice(0, 3)} onSeeAll={() => setTab('list')} empty={groupedByDate.length === 0} />
           </div>
@@ -983,9 +980,9 @@ function LedgerApp({ email, onLogout }: { email: string; onLogout: () => void })
         {/* MORE */}
         {tab === 'more' && (
           <div className="anim-slidedown">
-            <MorePage budget={budget} onSaveBudget={v => setBudgets(p => ({ ...p, [monthKey]: v }))}
+            <MorePage budget={budget} onSaveBudget={saveBudget}
               theme={theme} onSetTheme={k => { setTheme(k); applyPalette(k); }}
-              txCount={transactions.length} monthLabel={monthLabel}
+              txCount={monthTx.length} monthLabel={monthLabel}
               email={email} onLogout={onLogout} />
           </div>
         )}

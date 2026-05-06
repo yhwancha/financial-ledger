@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Frontend (Vite)",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd frontend && npx vite --port 5173"],
+      "port": 5173
+    },
+    {
+      "name": "Backend (FastAPI)",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd backend && uvicorn app.main:app --reload --port 8000"],
+      "port": 8000
+    }
+  ]
+}
