@@ -22,6 +22,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json();
 }
 
+export interface Transaction {
+  id: number;
+  date: string;
+  type: 'income' | 'expense';
+  category: string;
+  amount: number;
+  memo: string;
+}
+
 export const api = {
   register: (email: string, password: string) =>
     request<{ id: number; email: string }>('/auth/register', {
@@ -36,4 +45,31 @@ export const api = {
     }),
 
   me: () => request<{ id: number; email: string }>('/users/me'),
+
+  getTransactions: (year: number, month: number) =>
+    request<Transaction[]>(`/transactions?year=${year}&month=${month}`),
+
+  createTransaction: (data: Omit<Transaction, 'id'>) =>
+    request<Transaction>('/transactions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateTransaction: (id: number, data: Partial<Omit<Transaction, 'id'>>) =>
+    request<Transaction>(`/transactions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteTransaction: (id: number) =>
+    request<void>(`/transactions/${id}`, { method: 'DELETE' }),
+
+  getBudget: (year: number, month: number) =>
+    request<{ year: number; month: number; amount: number }>(`/budgets/${year}/${month}`),
+
+  setBudget: (year: number, month: number, amount: number) =>
+    request<{ year: number; month: number; amount: number }>(`/budgets/${year}/${month}`, {
+      method: 'PUT',
+      body: JSON.stringify({ amount }),
+    }),
 };

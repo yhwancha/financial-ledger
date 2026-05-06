@@ -11,7 +11,11 @@ app = FastAPI(title="Finance Ledger API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://financial-ledger-1.onrender.com"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://financial-ledger-1.onrender.com",
+        "https://financial-ledger-1.onrender.com/",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
